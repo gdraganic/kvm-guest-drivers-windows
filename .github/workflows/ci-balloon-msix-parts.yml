@@ -17,7 +17,7 @@ jobs:
           fetch-depth: 0
       - name: Select variant
         shell: bash
-        run: git checkout ${{ matrix.variant == 'isr' && '861de8927f9f23d34befc779bf4e4babec97ad4f' || 'f9bbedc854903eb13db9addc0fa2c35d9c7836e1' }} -- Balloon
+        run: git checkout ${{ matrix.variant == 'isr' && '861de8927f9f23d34befc779bf4e4babec97ad4f' || 'f9bbedc854903eb13db9addc0fa2c35d9c7836e1' }} -- Balloon && git -c user.name=ci -c user.email=ci@example.com commit -q -m variant --allow-empty
       - name: Add the PFN fix (#1670)
         shell: bash
         run: |
