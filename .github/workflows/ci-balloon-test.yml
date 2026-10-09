@@ -9,7 +9,7 @@ jobs:
       fail-fast: false
       matrix:
         variant: [fix, base]
-        platform: [x64, ARM64, Win32]
+        platform: [x64, ARM64, x86]
         config: [Win11, Win10]
     steps:
       - uses: actions/checkout@v4
