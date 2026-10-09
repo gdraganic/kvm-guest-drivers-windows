@@ -486,13 +486,18 @@ BalloonInterruptIsr(IN WDFINTERRUPT WdfInterrupt, IN ULONG MessageID)
 {
     PDEVICE_CONTEXT devCtx = NULL;
     WDFDEVICE Device;
+    WDF_INTERRUPT_INFO info;
 
     UNREFERENCED_PARAMETER(MessageID);
 
     Device = WdfInterruptGetDevice(WdfInterrupt);
     devCtx = GetDeviceContext(Device);
 
-    if (VirtIOWdfGetISRStatus(&devCtx->VDevice) > 0)
+    WDF_INTERRUPT_INFO_INIT(&info);
+    WdfInterruptGetInfo(WdfInterrupt, &info);
+
+    /* the ISR status is not used with MSI-X, a message is never shared */
+    if (info.MessageSignaled || VirtIOWdfGetISRStatus(&devCtx->VDevice) > 0)
     {
         TraceEvents(TRACE_LEVEL_INFORMATION, DBG_INTERRUPT, "--> %s\n", __FUNCTION__);
         WdfInterruptQueueDpcForIsr(WdfInterrupt);
