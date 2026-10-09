@@ -1,0 +1,49 @@
+name: Balloon MSI-X parts build (scratch)
+on:
+  push:
+    branches: [ci-balloon-msix-parts]
+jobs:
+  build:
+    runs-on: windows-2022
+    strategy:
+      fail-fast: false
+      matrix:
+        variant: [isr, isrcfg]
+        platform: [x64]
+        config: [Win11]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Select variant
+        shell: bash
+        run: git checkout ${{ matrix.variant == 'isr' && '861de8927f9f23d34befc779bf4e4babec97ad4f' || 'f9bbedc854903eb13db9addc0fa2c35d9c7836e1' }} -- Balloon
+      - name: Add the PFN fix (#1670)
+        shell: bash
+        run: |
+          git fetch origin 12d7b4fbacd15caa58bfde0d4ff94213724debfc || git fetch https://github.com/gdraganic/kvm-guest-drivers-windows.git balloon-32bit-pfns
+          git -c user.name=ci -c user.email=ci@example.com cherry-pick 12d7b4fbacd15caa58bfde0d4ff94213724debfc
+      - uses: microsoft/setup-msbuild@v2
+        with:
+          msbuild-architecture: x64
+      - name: Build
+        shell: cmd
+        working-directory: Balloon
+        run: msbuild balloon.sln /m /p:Configuration="${{ matrix.config }} Release" /p:Platform=${{ matrix.platform }} /v:minimal
+      - name: Sign
+        shell: pwsh
+        run: |
+          $signtool = Get-ChildItem "C:\Program Files (x86)\Windows Kits\10\bin\*\x64\signtool.exe" | Sort-Object FullName | Select-Object -Last 1
+          Get-ChildItem -Recurse Balloon/sys -Include balloon.sys,balloon.cat | ForEach-Object {
+            & $signtool.FullName sign /fd SHA256 /f build\VirtIOTestCert.pfx $_.FullName
+            if ($LASTEXITCODE) { exit 1 }
+          }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: balloon-${{ matrix.variant }}-${{ matrix.config }}-${{ matrix.platform }}
+          path: |
+            Balloon/sys/**/balloon.sys
+            Balloon/sys/**/balloon.inf
+            Balloon/sys/**/balloon.cat
+            Balloon/sys/**/balloon.pdb
+            build/VirtIOTestCert.cer
