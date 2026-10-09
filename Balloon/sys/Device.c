@@ -222,7 +222,12 @@ BalloonEvtDevicePrepareHardware(IN WDFDEVICE Device,
 
     devCtx = GetDeviceContext(Device);
 
-    status = VirtIOWdfInitialize(&devCtx->VDevice, Device, ResourceListTranslated, NULL, BALLOON_MGMT_POOL_TAG);
+    /* With MSI-X, config changes (balloon resize requests) share the queue vector */
+    status = VirtIOWdfInitialize(&devCtx->VDevice,
+                                 Device,
+                                 ResourceListTranslated,
+                                 devCtx->WdfInterrupt,
+                                 BALLOON_MGMT_POOL_TAG);
     if (!NT_SUCCESS(status))
     {
         TraceEvents(TRACE_LEVEL_ERROR, DBG_POWER, "VirtIOWdfInitialize failed with %x\n", status);
