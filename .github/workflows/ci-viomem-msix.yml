@@ -1,0 +1,41 @@
+name: viomem MSI-X test build (scratch)
+on:
+  push:
+    branches: [ci-viomem-msix]
+jobs:
+  build:
+    runs-on: windows-2022
+    strategy:
+      fail-fast: false
+      matrix:
+        variant: [msix]
+        platform: [x64]
+        config: [Win11]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: microsoft/setup-msbuild@v2
+        with:
+          msbuild-architecture: x64
+      - name: Build
+        shell: cmd
+        working-directory: viomem
+        run: msbuild viomem.sln /m /p:Configuration="${{ matrix.config }} Release" /p:Platform=${{ matrix.platform }} /v:minimal
+      - name: Sign
+        shell: pwsh
+        run: |
+          $signtool = Get-ChildItem "C:\Program Files (x86)\Windows Kits\10\bin\*\x64\signtool.exe" | Sort-Object FullName | Select-Object -Last 1
+          Get-ChildItem -Recurse viomem/sys -Include viomem.sys,viomem.cat | ForEach-Object {
+            & $signtool.FullName sign /fd SHA256 /f build\VirtIOTestCert.pfx $_.FullName
+            if ($LASTEXITCODE) { exit 1 }
+          }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: viomem-${{ matrix.variant }}-${{ matrix.config }}-${{ matrix.platform }}
+          path: |
+            viomem/sys/**/viomem.sys
+            viomem/sys/**/viomem.inf
+            viomem/sys/**/viomem.cat
+            viomem/sys/**/viomem.pdb
+            build/VirtIOTestCert.cer
